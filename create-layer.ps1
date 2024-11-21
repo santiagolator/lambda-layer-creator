@@ -36,8 +36,6 @@ Engine container to use: “docker” (default) or “podman”.
 Make sure you have Docker or Podman installed and configured, as well as the AWS CLI if you want to upload the layer to AWS.
 #>
 
-Translated with DeepL.com (free version)
-
 param(
     [Parameter(Mandatory=$true)][string]$layername,
     [Parameter(Mandatory=$true)][string]$runtime,
