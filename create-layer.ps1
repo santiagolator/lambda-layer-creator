@@ -42,7 +42,7 @@ param(
     [Parameter(ParameterSetName="Packages", Mandatory=$true)][string[]]$packages,
     [Parameter(ParameterSetName="RequirementsFile")][string]$requirementsFile,
     [switch]$zipOnly,
-    [ValidateSet("docker", "podman")][string]$containerEngine = "docker"
+    [ValidateSet("docker", "podman")][string]$containerEngine = "podman"
 )
 
 $ErrorActionPreference = "Stop"
@@ -54,22 +54,28 @@ Write-Host "Runtime: $runtime"
 if ($PSCmdlet.ParameterSetName -eq "Packages") {
     Write-Host "Packages: $($packages -join ' ')"
 } else {
-    Write-Host "Archivo requirements: $requirementsFile"
+    Write-Host "requirements file: $requirementsFile"
 }
-Write-Host "Only Zip, not AWS uploading: $zipOnly"
+
+if ($zipOnly) {
+    Write-Host "Only Zip file, not AWS uploading"
+}
+else {
+    Write-Host "Uploading layer to AWS"
+}
 Write-Host "Container engine: $containerEngine"
 
 Write-Host "================================="
 
 $host_temp_dir = New-TemporaryFile | ForEach-Object { Remove-Item $_; New-Item -ItemType Directory -Path $_.FullName }
 
-$support_python_runtime = @("python3.6","python3.7","python3.8","python3.9","python3.10","python3.11","python3.12")
+$support_python_runtime = @("python3.6","python3.7","python3.8","python3.9","python3.10","python3.11","python3.12","python3.13")
 $support_node_runtime = @("nodejs10.x","nodejs12.x","nodejs14.x","nodejs16.x","nodejs18.x","nodejs20.x")
 
 if ($support_node_runtime -contains $runtime) {
     $installation_path = "nodejs"
     $container_image = "public.ecr.aws/sam/build-$runtime`:latest"
-    Write-Host "👷 Preparing layer..."
+    Write-Host "- Preparing layer..."
     if ($PSCmdlet.ParameterSetName -eq "Packages") {
         $packages_string = $packages -join ' '
         $install_command = "npm install --prefix $installation_path --save $packages_string"
@@ -82,7 +88,7 @@ if ($support_node_runtime -contains $runtime) {
 elseif ($support_python_runtime -contains $runtime) {
     $installation_path = "python"
     $container_image = "public.ecr.aws/sam/build-$runtime`:latest"
-    Write-Host "👷 Preparing layer..."
+    Write-Host "- Preparing layer..."
     if ($PSCmdlet.ParameterSetName -eq "Packages") {
         $packages_string = $packages -join ' '
         $install_command = "pip install $packages_string -t $installation_path"
@@ -93,27 +99,27 @@ elseif ($support_python_runtime -contains $runtime) {
     & $containerEngine run --rm -v "${host_temp_dir}:/lambda-layer:Z" -w "/lambda-layer" $container_image /bin/bash -c "mkdir $installation_path && $install_command && zip -r lambda-layer.zip * -x '*/__pycache__/*'"
 }
 else {
-    Write-Host "✖️ Invalid runtime"
+    Write-Host "- X Invalid runtime"
     exit 1
 }
 
 if ($zipOnly) {
 
     if ($support_node_runtime -contains $runtime) {
-        $destination = Join-Path -Path $PWD -ChildPath "${layername}_${runtime}_lambda_layer_.zip"
+        $destination = Join-Path -Path $PWD -ChildPath "${layername}_${runtime}_lambda_layer.zip"
     }
     elseif ($support_python_runtime -contains $runtime) {
         $destination = Join-Path -Path $PWD -ChildPath "${layername}_${runtime}_lambda_layer.zip"
     }
     Copy-Item -Path "${host_temp_dir}\lambda-layer.zip" -Destination $destination
-    Write-Host "💾 Archivo ZIP del Layer creado en: $destination"
+    Write-Host "- Layer zip file created at: $destination"
 }
 else {
-    Write-Host "☁️ Subiendo Layer a AWS"
+    Write-Host "- Uploading layer to AWS"
     aws lambda publish-layer-version --layer-name $layername --compatible-runtimes $runtime --zip-file "fileb://${host_temp_dir}/lambda-layer.zip"
 }
 
-Write-Host "🔚 Finishing..."
+Write-Host "- Finishing"
 Remove-Item -Recurse -Force $host_temp_dir
 
-Write-Host "💪 Ready!"
+Write-Host "- Ready!"
