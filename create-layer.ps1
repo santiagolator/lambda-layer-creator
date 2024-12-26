@@ -98,12 +98,18 @@ else {
 }
 
 if ($zipOnly) {
-    $destination = Join-Path -Path $PWD -ChildPath "${layername}_lambda_layer.zip"
+
+    if ($support_node_runtime -contains $runtime) {
+        $destination = Join-Path -Path $PWD -ChildPath "${layername}_${runtime}_lambda_layer_.zip"
+    }
+    elseif ($support_python_runtime -contains $runtime) {
+        $destination = Join-Path -Path $PWD -ChildPath "${layername}_${runtime}_lambda_layer.zip"
+    }
     Copy-Item -Path "${host_temp_dir}\lambda-layer.zip" -Destination $destination
-    Write-Host "💾 ZIP file saved at: $destination"
+    Write-Host "💾 Archivo ZIP del Layer creado en: $destination"
 }
 else {
-    Write-Host "☁️ Uploading layer version to AWS"
+    Write-Host "☁️ Subiendo Layer a AWS"
     aws lambda publish-layer-version --layer-name $layername --compatible-runtimes $runtime --zip-file "fileb://${host_temp_dir}/lambda-layer.zip"
 }
 
