@@ -29,7 +29,7 @@ powershell .\create-layer.ps1 -layername <string> -runtime <string> [-packages <
 - `packages`: List of packages to install (use this or `requirementsFile`).
 - `requirementsFile`: Path to the requirements file (requirements.txt for Python, package.json for Node.js).
 - `zipOnly`: If specified, only creates the ZIP file without uploading to AWS.
-- `containerEngine`: Container engine to use: "docker" (default) or "podman".
+- `containerEngine`: Container engine to use: "docker" or "podman" (default).
 
 ## Examples
 
